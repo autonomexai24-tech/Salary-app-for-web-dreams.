@@ -1,0 +1,127 @@
+// ─────────────────────────────────────────────────
+// Salary App — Prisma Schema (PostgreSQL)
+// ─────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Department ──
+model Department {
+  id         Int        @id @default(autoincrement())
+  name       String     @unique
+  is_active  Boolean    @default(true)
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+
+  employees  Employee[]
+
+  @@map("departments")
+}
+
+// ── Employee ──
+model Employee {
+  id             Int          @id @default(autoincrement())
+  first_name     String
+  last_name      String
+  phone          String
+  email          String       @unique
+  department_id  Int?
+  dob            DateTime?
+  joining_date   DateTime?
+  is_active      Boolean      @default(true)
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
+
+  department     Department?  @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  salaries       Salary[]
+  payslips       Payslip[]
+
+  @@index([department_id])
+  @@index([is_active])
+  @@map("employees")
+}
+
+// ── Salary (Immutable Record) ──
+model Salary {
+  id                   Int       @id @default(autoincrement())
+  employee_id          Int
+  month                Int       // 1-12
+  year                 Int       // e.g. 2026
+
+  // ── Input fields ──
+  working_days         Int
+  hours_per_day        Int       @default(8)
+  working_hours        Int       // working_days × hours_per_day
+  basic_salary         Decimal   @db.Decimal(12, 2)
+  incentive            Decimal   @default(0) @db.Decimal(12, 2)
+  arrears              Decimal   @default(0) @db.Decimal(12, 2)
+  ta_da                Decimal   @default(0) @db.Decimal(12, 2)
+  bonus                Decimal   @default(0) @db.Decimal(12, 2)
+  leaves_taken         Int       @default(0)
+  ot_hours             Decimal   @default(0) @db.Decimal(12, 2)
+
+  // ── Deductions ──
+  professional_tax     Decimal   @default(0) @db.Decimal(12, 2)
+  advance_taken        Decimal   @default(0) @db.Decimal(12, 2)
+  additional_advance   Decimal   @default(0) @db.Decimal(12, 2)
+  advance_deducted     Decimal   @default(0) @db.Decimal(12, 2)
+  extra_fine           Decimal   @default(0) @db.Decimal(12, 2)
+  leave_penalty        Decimal   @default(0) @db.Decimal(12, 2)
+  time_penalty         Decimal   @default(0) @db.Decimal(12, 2)
+
+  // ── Computed (stored for performance) ──
+  salary_per_day       Decimal   @db.Decimal(12, 2)
+  salary_per_hour      Decimal   @db.Decimal(12, 2)
+  ot_pay               Decimal   @db.Decimal(12, 2)
+  gross_salary         Decimal   @db.Decimal(12, 2)
+  total_deductions     Decimal   @db.Decimal(12, 2)
+  net_salary           Decimal   @db.Decimal(12, 2)
+
+  // ── Control ──
+  is_locked            Boolean   @default(false)
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  employee             Employee  @relation(fields: [employee_id], references: [id])
+  payslips             Payslip[]
+
+  @@unique([employee_id, month, year])
+  @@index([employee_id])
+  @@index([month, year])
+  @@map("salaries")
+}
+
+// ── Payslip ──
+model Payslip {
+  id              Int       @id @default(autoincrement())
+  employee_id     Int
+  salary_id       Int
+  generated_data  Json      // Full snapshot
+  pdf_url         String?
+  created_at      DateTime  @default(now())
+
+  employee        Employee  @relation(fields: [employee_id], references: [id])
+  salary          Salary    @relation(fields: [salary_id], references: [id])
+
+  @@index([employee_id])
+  @@index([salary_id])
+  @@map("payslips")
+}
+
+// ── Settings (singleton) ──
+model Settings {
+  id               Int       @id @default(1)
+  company_name     String    @default("My Company")
+  company_address  String    @default("")
+  logo_url         String?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  @@map("settings")
+}
