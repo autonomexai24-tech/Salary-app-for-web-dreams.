@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageContainer from "@/components/layout/PageContainer";
+import { apiFetch } from "@/lib/api";
+
+interface Department {
+  id: number;
+  name: string;
+}
 
 interface FormState {
   firstName: string;
@@ -87,6 +93,19 @@ export default function EmployeePage() {
   const [form, setForm] = useState<FormState>(initialState);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  useEffect(() => {
+    async function loadDepts() {
+      try {
+        const res = await apiFetch<{ data: Department[] }>("/departments");
+        setDepartments(res.data || []);
+      } catch (e) {
+        console.error("Failed to load departments", e);
+      }
+    }
+    loadDepts();
+  }, []);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -108,10 +127,27 @@ export default function EmployeePage() {
     return Object.keys(newErrors).length === 0;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (validate()) {
-      setSubmitted(true);
+      try {
+        await apiFetch("/employees", {
+          method: "POST",
+          body: JSON.stringify({
+            first_name: form.firstName,
+            last_name: form.lastName,
+            phone: form.phone,
+            email: form.email,
+            department_id: form.department ? Number(form.department) : null,
+            dob: form.dob ? new Date(form.dob).toISOString() : null,
+            joining_date: form.joiningDate ? new Date(form.joiningDate).toISOString() : null,
+          }),
+        });
+        setSubmitted(true);
+      } catch (error) {
+        console.error("Failed to register employee", error);
+        alert(error instanceof Error ? error.message : "Failed to register employee");
+      }
     }
   }
 
@@ -188,11 +224,9 @@ export default function EmployeePage() {
           <Field label="Department">
             <select name="department" value={form.department} onChange={handleChange} className={selectClass}>
               <option value="">Select department</option>
-              <option>Production</option>
-              <option>Accounts</option>
-              <option>Logistics</option>
-              <option>HR</option>
-              <option>Quality Control</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>{dept.name}</option>
+              ))}
             </select>
           </Field>
 

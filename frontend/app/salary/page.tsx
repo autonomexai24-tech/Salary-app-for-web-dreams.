@@ -1,7 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageContainer from "@/components/layout/PageContainer";
+import { apiFetch } from "@/lib/api";
+
+interface Employee {
+  id: number;
+  first_name: string;
+  last_name: string;
+}
 
 interface SalaryForm {
   employees: string;
@@ -35,13 +42,7 @@ interface FormErrors {
   year?: string;
 }
 
-const EMPLOYEES = [
-  "Rajesh Sharma",
-  "Priya Mehta",
-  "Amit Verma",
-  "Sunita Patel",
-  "Vikram Singh",
-];
+
 
 const MONTHS = [
   "January","February","March","April","May","June",
@@ -223,6 +224,19 @@ export default function SalaryPage() {
   const [form, setForm] = useState<SalaryForm>(empty);
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPayslip, setShowPayslip] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
+  useEffect(() => {
+    async function fetchEmployees() {
+      try {
+        const res = await apiFetch<{ data: Employee[] }>("/employees");
+        setEmployees(res.data || []);
+      } catch (e) {
+        console.error("Failed to load employees");
+      }
+    }
+    fetchEmployees();
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
@@ -287,7 +301,7 @@ export default function SalaryPage() {
               <select name="employees" value={form.employees} onChange={handleChange}
                 className={errors.employees ? selectErrCls : selectCls}>
                 <option value="">Select employee</option>
-                {EMPLOYEES.map((e) => <option key={e}>{e}</option>)}
+                {employees.map((e) => <option key={e.id} value={e.id}>{e.first_name} {e.last_name}</option>)}
               </select>
               <ErrorMsg msg={errors.employees} />
             </div>
