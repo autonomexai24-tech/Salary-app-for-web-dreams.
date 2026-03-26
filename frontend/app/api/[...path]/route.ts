@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Force dynamic — never cache API responses
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 const getBackendUrl = () =>
   process.env.BACKEND_URL || "http://localhost:5000/api";
 
